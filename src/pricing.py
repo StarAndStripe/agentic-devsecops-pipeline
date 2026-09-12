@@ -7,3 +7,13 @@ def calculate_discount(price: float, percentage: float) -> float:
         raise ValueError("Percentage must be between 0 and 100")
 
     return price - (price * percentage / 100)
+
+def calculate_shipping_fee(order_total: float, express: bool = False) -> float:
+    """Calculate shipping fee based on order total and delivery type."""
+    if order_total >= 100:
+        return 0
+
+    if express:
+        return 15
+
+    return 5
