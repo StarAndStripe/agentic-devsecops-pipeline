@@ -232,8 +232,8 @@ A human reviewer evaluates the findings and retains authority over the final mer
 AI reasoning does not replace conventional CI.
 
 Automated tests remain deterministic. In the current demonstration repository,
-the `Python Tests` workflow is configured as a required status check through
-a GitHub repository ruleset before changes can be merged into `main`.
+the `Python Tests` job from the `CI` workflow is configured as a required status
+check through a GitHub repository ruleset before changes can be merged into `main`.
 
 Repository rulesets are GitHub-side controls and are therefore not represented
 by the versioned workflow files in this repository.
