@@ -231,7 +231,12 @@ A human reviewer evaluates the findings and retains authority over the final mer
 
 AI reasoning does not replace conventional CI.
 
-Automated tests remain deterministic and are configured as required status checks.
+Automated tests remain deterministic. In the current demonstration repository,
+the `Python Tests` workflow is configured as a required status check through
+a GitHub repository ruleset before changes can be merged into `main`.
+
+Repository rulesets are GitHub-side controls and are therefore not represented
+by the versioned workflow files in this repository.
 
 ### Supply-Chain Hardening
 
@@ -241,9 +246,14 @@ Dependabot provides controlled dependency update proposals.
 
 ### Protected Main Branch
 
-Changes reach the main branch through pull requests and required CI checks.
+In the current demonstration repository, the `main` branch is protected through
+a GitHub repository ruleset requiring pull-request-based changes and successful
+required CI checks before merge.
 
-Force pushes and unsafe direct modifications are restricted through repository rules.
+Force pushes and branch deletion are restricted.
+
+These protections are repository-level GitHub settings rather than controls
+defined directly in the versioned CI workflow.
 
 ---
 
