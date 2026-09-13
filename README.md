@@ -48,42 +48,38 @@ This project introduces an AI reasoning layer capable of reviewing the broader c
 
 ## Architecture
 
-```text
-Developer
-    |
-    v
-Feature Branch
-    |
-    v
-Pull Request
-    |
-    +-----------------------+
-    |                       |
-    v                       v
-Deterministic CI       AI PR Reviewer
-Pytest                 Agentic Workflow
-    |                       |
-    |                       +--> Correctness
-    |                       +--> Test coverage
-    |                       +--> Edge cases
-    |                       +--> Security risks
-    |                       +--> CI/CD risks
-    |                       +--> Maintainability
-    |                       |
-    v                       v
-Required Check          Advisory Findings
-    |                       |
-    +-----------+-----------+
-                |
-                v
-          Human Review
-                |
-                v
-       Branch Protection
-                |
-                v
-          Protected Main
+```mermaid
+flowchart TD
+    DEV["Developer"] --> BRANCH["Feature Branch"]
+    BRANCH --> PR["Pull Request"]
+
+    PR --> CI["Deterministic CI<br/>Python Tests"]
+    PR --> AGENT["AI PR Reviewer<br/>GitHub Agentic Workflow"]
+
+    CI --> TESTS["Execute Tests<br/>Pass / Fail"]
+
+    AGENT --> ANALYSIS["Contextual Risk Analysis"]
+    ANALYSIS --> CORRECTNESS["Correctness"]
+    ANALYSIS --> COVERAGE["Test Coverage"]
+    ANALYSIS --> SECURITY["Security"]
+    ANALYSIS --> SUPPLY["CI/CD & Supply Chain"]
+
+    TESTS --> REQUIRED["Required Status Check"]
+    CORRECTNESS --> ADVISORY["Advisory Findings"]
+    COVERAGE --> ADVISORY
+    SECURITY --> ADVISORY
+    SUPPLY --> ADVISORY
+
+    REQUIRED --> HUMAN["Human Review"]
+    ADVISORY --> HUMAN
+
+    HUMAN --> RULESET["GitHub Repository Ruleset"]
+    RULESET --> MAIN["Protected Main Branch"]
+
+    DEP["Dependabot"] --> UPDATE["Dependency Update PR"]
+    UPDATE --> PR
 ```
+> **AI reasons → policy constrains → deterministic CI verifies → human decides.**
 
 The deterministic pipeline remains responsible for executing tests and enforcing required checks.
 
@@ -191,6 +187,101 @@ The AI reviewer confirmed:
 All required checks passed before the human-controlled merge.
 
 ---
+
+## Evidence & Results
+
+The first demonstration was intentionally developed through multiple review and remediation cycles.
+
+### Review 1 — Application Risk
+
+**AI Risk Assessment: MEDIUM**
+
+The deterministic test suite passed, but the AI reviewer identified missing behavioral coverage:
+
+- express shipping
+- free-shipping boundary conditions
+- above-threshold behavior
+- invalid negative order totals
+
+This demonstrated an important distinction:
+
+> Passing tests prove that tested behavior works. They do not prove that all important behavior has been tested.
+
+### Remediation 1 — Application Tests
+
+Input validation was added and the test suite was expanded to cover the identified decision branches.
+
+```text
+8 passed
+```
+
+The deterministic CI pipeline subsequently validated the corrected implementation.
+
+### Review 2 — CI/CD Supply-Chain Risk
+
+After the application findings were remediated, the AI reviewer identified a separate DevSecOps concern.
+
+GitHub Actions dependencies used mutable major-version references:
+
+```yaml
+uses: actions/checkout@v4
+uses: actions/setup-python@v5
+```
+
+**AI Risk Assessment: MEDIUM**
+
+The reviewer identified the possibility of tag mutation affecting future CI executions.
+
+### Remediation 2 — Supply-Chain Hardening
+
+The GitHub Actions dependencies were pinned to immutable full commit SHAs.
+
+Dependabot was configured to monitor those dependencies and propose controlled updates through pull requests.
+
+### Review 3 — Final Assessment
+
+**AI Risk Assessment: LOW**
+
+The final review confirmed that:
+
+- application decision branches were covered
+- invalid monetary input was rejected
+- deterministic tests passed
+- GitHub Actions dependencies were immutable
+- least-privilege CI permissions were retained
+- no blocking application security issue was identified
+
+The pull request was then eligible for human-controlled merge after all required checks passed.
+
+### Outcome
+
+The experiment demonstrated that deterministic CI and contextual AI review can detect different classes of problems.
+
+| Stage | Deterministic CI | AI Review | Finding |
+|---|---|---|---|
+| Initial change | PASS | MEDIUM | Missing edge cases |
+| After test remediation | PASS | MEDIUM | Mutable CI dependencies |
+| After supply-chain hardening | PASS | LOW | No blocking finding |
+
+The AI reviewer remained advisory throughout the process. Deterministic controls and human review retained authority over the merge.
+
+### Review Evidence
+
+#### 1. AI reviewer identifies missing application coverage
+
+![AI reviewer identifying missing tests and edge cases](docs/images/01-ai-review-missing-tests.png)
+
+#### 2. AI reviewer identifies CI/CD supply-chain risk
+
+![AI reviewer identifying mutable GitHub Actions dependencies](docs/images/02-ai-review-supply-chain.png)
+
+#### 3. Final AI assessment after remediation
+
+![AI reviewer returning a LOW risk assessment after remediation](docs/images/03-ai-review-low-risk.png)
+
+#### 4. Deterministic required checks
+
+![GitHub required CI checks passing before merge](docs/images/04-required-ci-checks.png)
 
 ## Security Model
 
