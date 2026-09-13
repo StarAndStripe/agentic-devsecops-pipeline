@@ -10,6 +10,9 @@ def calculate_discount(price: float, percentage: float) -> float:
 
 def calculate_shipping_fee(order_total: float, express: bool = False) -> float:
     """Calculate shipping fee based on order total and delivery type."""
+    if order_total < 0:
+        raise ValueError("Order total cannot be negative")
+
     if order_total >= 100:
         return 0
 
