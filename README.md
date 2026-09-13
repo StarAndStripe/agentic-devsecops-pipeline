@@ -47,39 +47,30 @@ This project introduces an AI reasoning layer capable of reviewing the broader c
 ---
 
 ## Architecture
-
 ```mermaid
 flowchart TD
     DEV["Developer"] --> BRANCH["Feature Branch"]
     BRANCH --> PR["Pull Request"]
 
+    DEP["Dependabot"] --> UPDATE["Dependency Update PR"]
+    UPDATE --> PR
+
     PR --> CI["Deterministic CI<br/>Python Tests"]
     PR --> AGENT["AI PR Reviewer<br/>GitHub Agentic Workflow"]
 
     CI --> TESTS["Execute Tests<br/>Pass / Fail"]
-
-    AGENT --> ANALYSIS["Contextual Risk Analysis"]
-    ANALYSIS --> CORRECTNESS["Correctness"]
-    ANALYSIS --> COVERAGE["Test Coverage"]
-    ANALYSIS --> SECURITY["Security"]
-    ANALYSIS --> SUPPLY["CI/CD & Supply Chain"]
-
     TESTS --> REQUIRED["Required Status Check"]
-    CORRECTNESS --> ADVISORY["Advisory Findings"]
-    COVERAGE --> ADVISORY
-    SECURITY --> ADVISORY
-    SUPPLY --> ADVISORY
+
+    AGENT --> ANALYSIS["Contextual Risk Analysis<br/>Correctness · Test Coverage · Security<br/>CI/CD & Supply Chain"]
+    ANALYSIS --> ADVISORY["Advisory Findings"]
 
     REQUIRED --> HUMAN["Human Review"]
     ADVISORY --> HUMAN
 
     HUMAN --> RULESET["GitHub Repository Ruleset"]
     RULESET --> MAIN["Protected Main Branch"]
-
-    DEP["Dependabot"] --> UPDATE["Dependency Update PR"]
-    UPDATE --> PR
 ```
-> **AI reasons → policy constrains → deterministic CI verifies → human decides.**
+**AI reasons → policy constrains → deterministic CI verifies → human decides.**
 
 The deterministic pipeline remains responsible for executing tests and enforcing required checks.
 
