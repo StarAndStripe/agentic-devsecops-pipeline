@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  terraform:
+  validate:
     name: Terraform Validate
     runs-on: ubuntu-latest
 
@@ -36,9 +36,17 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
-    
+
+  security:
+    name: Terraform Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
       - name: Trivy IaC Security Scan
-        uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
+        uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297
         with:
           scan-type: "config"
           scan-ref: "terraform/demo"
