@@ -2,6 +2,11 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-ci.yml"
+      - ".github/workflows/ai-terraform-risk-reviewer.md"
+      - ".github/workflows/ai-terraform-risk-reviewer.lock.yml"
 
 permissions:
   contents: read
