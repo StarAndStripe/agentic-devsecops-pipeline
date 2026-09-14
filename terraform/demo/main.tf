@@ -81,8 +81,12 @@ resource "aws_s3_bucket_policy" "application_data" {
 
 resource "aws_kms_key" "application_data" {
   description             = "KMS key for application data S3 bucket"
-  deletion_window_in_days = 7
+  deletion_window_in_days = 30
   enable_key_rotation     = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
 
   tags = {
     Environment = var.environment
