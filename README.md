@@ -47,30 +47,39 @@ This project introduces an AI reasoning layer capable of reviewing the broader c
 ---
 
 ## Architecture
+
 ```mermaid
 flowchart TD
+
     DEV["Developer"] --> BRANCH["Feature Branch"]
     BRANCH --> PR["Pull Request"]
 
     DEP["Dependabot"] --> UPDATE["Dependency Update PR"]
     UPDATE --> PR
 
-    PR --> CI["Deterministic CI<br/>Python Tests"]
-    PR --> AGENT["AI PR Reviewer<br/>GitHub Agentic Workflow"]
+    PR --> APP_CI["Application CI<br/>Python Tests"]
+    PR --> TF_CI["Terraform CI<br/>Format · Validate · Trivy"]
+    PR --> PR_AGENT["AI PR Reviewer"]
+    PR --> TF_AGENT["AI Terraform Risk Reviewer"]
 
-    CI --> TESTS["Execute Tests<br/>Pass / Fail"]
-    TESTS --> REQUIRED["Required Status Check"]
+    APP_CI --> TEST_GATE["Deterministic Test Gate"]
 
-    AGENT --> ANALYSIS["Contextual Risk Analysis<br/>Correctness · Test Coverage · Security<br/>CI/CD & Supply Chain"]
-    ANALYSIS --> ADVISORY["Advisory Findings"]
+    TF_CI --> TF_VALIDATE["Terraform Validation"]
+    TF_CI --> SECURITY["IaC Security Policy<br/>MEDIUM+ Report<br/>HIGH/CRITICAL Gate"]
 
-    REQUIRED --> HUMAN["Human Review"]
-    ADVISORY --> HUMAN
+    PR_AGENT --> CODE_FINDINGS["Application & CI/CD<br/>Risk Findings"]
 
-    HUMAN --> RULESET["GitHub Repository Ruleset"]
+    TF_AGENT --> INFRA_FINDINGS["Infrastructure Context<br/>Security · Reliability · Cost<br/>Blast Radius"]
+
+    TEST_GATE --> HUMAN["Human Review"]
+    TF_VALIDATE --> HUMAN
+    SECURITY --> HUMAN
+    CODE_FINDINGS --> HUMAN
+    INFRA_FINDINGS --> HUMAN
+
+    HUMAN --> RULESET["Repository Ruleset"]
     RULESET --> MAIN["Protected Main Branch"]
 ```
-**AI reasons → policy constrains → deterministic CI verifies → human decides.**
 
 The deterministic pipeline remains responsible for executing tests and enforcing required checks.
 
@@ -108,7 +117,7 @@ Its role is advisory.
 
 ---
 
-## Demo Scenario
+### Demo Scenario
 
 A shipping-fee function was introduced with logic for:
 
@@ -179,7 +188,7 @@ All required checks passed before the human-controlled merge.
 
 ---
 
-## Evidence & Results
+### Evidence & Results
 
 The first demonstration was intentionally developed through multiple review and remediation cycles.
 
@@ -274,6 +283,257 @@ The AI reviewer remained advisory throughout the process. Deterministic controls
 
 ![GitHub required CI checks passing before merge](docs/images/04-required-ci-checks.png)
 
+
+---
+
+## Demo 2 — AI Terraform Infrastructure Risk Reviewer
+
+### Objective
+
+Extend the Agentic DevSecOps model from application pull requests to Infrastructure as Code.
+
+This demonstration combines deterministic Terraform validation and IaC security scanning with an AI infrastructure reviewer capable of reasoning about risks that are not necessarily represented by scanner pass/fail results.
+
+The reviewer evaluates Terraform changes for:
+
+- public exposure
+- encryption and key management
+- IAM and least privilege
+- data protection
+- infrastructure reliability
+- blast radius
+- auditability
+- operational risks
+- cost considerations
+- potentially unsafe but technically valid configurations
+
+As with Demo 1, the AI reviewer remains advisory and cannot apply infrastructure changes.
+
+---
+
+### Initial Infrastructure
+
+The demonstration started with an intentionally insecure S3 configuration.
+
+The initial Terraform included:
+
+- disabled S3 public-access protections
+- a public-read ACL
+- no explicit customer-managed KMS encryption
+- no versioning
+- no TLS-only bucket policy
+
+Terraform syntax and configuration validation succeeded.
+
+However, deterministic IaC security scanning identified **6 HIGH-severity findings**.
+
+This demonstrated an important distinction:
+
+> Terraform validation proves that infrastructure configuration is structurally valid. It does not prove that the infrastructure is secure.
+
+The AI infrastructure reviewer independently classified the change as HIGH/CRITICAL risk and provided contextual analysis of the potential blast radius.
+
+---
+
+### Remediation 1 — Public Exposure
+
+The S3 configuration was hardened by:
+
+- enabling all S3 public-access-block controls
+- removing the public-read ACL
+- enabling `BucketOwnerEnforced` ownership
+- enabling S3 versioning
+
+After this remediation:
+
+| Control | Result |
+|---|---|
+| Terraform validation | PASS |
+| Trivy HIGH findings | Reduced from 6 to 1 |
+| AI infrastructure review | MEDIUM |
+
+The remaining deterministic finding concerned customer-managed encryption key governance.
+
+---
+
+### Remediation 2 — Transport and Encryption
+
+Additional controls were introduced:
+
+- TLS-only S3 bucket policy
+- customer-managed AWS KMS key
+- SSE-KMS default encryption
+- KMS automatic key rotation
+- S3 Bucket Key
+- 30-day KMS deletion recovery window
+- Terraform `prevent_destroy` protection for the KMS key
+
+The S3 bucket policy was also hardened to prevent explicitly requested object encryption from bypassing the designated KMS governance while preserving uploads that rely on bucket default encryption.
+
+At this stage, the deterministic HIGH/CRITICAL security gate passed.
+
+---
+
+### Remediation 3 — IaC Security Policy
+
+The Terraform CI pipeline separates security visibility from blocking policy.
+
+MEDIUM, HIGH, and CRITICAL findings are reported for review:
+
+```yaml
+severity: MEDIUM,HIGH,CRITICAL
+exit-code: '0'
+```
+
+A second deterministic security gate blocks HIGH and CRITICAL findings:
+
+```yaml
+severity: HIGH,CRITICAL
+exit-code: '1'
+```
+
+This creates an explicit security policy:
+
+| Severity | CI Policy |
+|---|---|
+| LOW | Informational |
+| MEDIUM | Visible for review |
+| HIGH | Blocking |
+| CRITICAL | Blocking |
+
+The Trivy GitHub Action is pinned to an immutable commit SHA as part of the project's software supply-chain controls.
+
+---
+
+### Final Result
+
+The final validation cycle completed with:
+
+```text
+0 cancelled
+0 failing
+15 successful
+0 skipped
+0 pending
+```
+
+Key deterministic results:
+
+- Python application tests: PASS
+- Terraform formatting and validation: PASS
+- Terraform HIGH/CRITICAL security gate: PASS
+- AI PR Reviewer workflow: SUCCESS
+- AI Terraform Infrastructure Risk Reviewer workflow: SUCCESS
+
+The AI infrastructure reviewer retained an overall **MEDIUM** risk classification.
+
+Importantly, the remaining findings were not public-exposure or encryption failures. They concerned production architecture decisions such as:
+
+- S3 object-level auditability
+- CloudTrail data events
+- recovery objectives
+- lifecycle and retention strategy
+- least-privilege workload IAM/KMS permissions
+- production backup and restore requirements
+
+These recommendations were deliberately not implemented automatically.
+
+They require workload context, data classification, RPO/RTO requirements, compliance requirements, cost considerations, and human architectural decisions.
+
+---
+
+### Why MEDIUM With All CI Checks Passing?
+
+This is a deliberate outcome of the experiment.
+
+Deterministic scanners and AI infrastructure reasoning answer different questions.
+
+A deterministic scanner can verify known security policies:
+
+> Is public access blocked?  
+> Is encryption configured?  
+> Are HIGH or CRITICAL IaC findings present?
+
+The AI reviewer can reason about broader architectural questions:
+
+> How would an operator investigate unauthorized object access?  
+> What happens if credentials with legitimate S3 access are compromised?  
+> What recovery guarantees does the workload require?  
+> Should this workload use immutable retention or replication?
+
+Therefore:
+
+```text
+Deterministic CI: PASS
+        +
+Security Gate: PASS
+        +
+AI Risk Assessment: MEDIUM
+        +
+Human Architecture Decision
+```
+
+is not a contradiction.
+
+It demonstrates the purpose of the Agentic DevSecOps architecture.
+
+**Passing security gates establish a baseline. AI reasoning identifies contextual risks beyond that baseline. Humans decide which controls are appropriate.**
+
+---
+
+### Demo 2 Outcome
+
+The infrastructure evolved through multiple security review cycles:
+
+| Stage | Terraform Validate | Trivy | AI Review | Primary Finding |
+|---|---|---|---|---|
+| Initial infrastructure | PASS | 6 HIGH | HIGH/CRITICAL | Public S3 exposure and weak data protection |
+| Public-access remediation | PASS | 1 HIGH | MEDIUM | KMS governance |
+| KMS/TLS hardening | PASS | PASS | MEDIUM | Architecture and auditability |
+| Final policy | PASS | PASS | MEDIUM | Production-context recommendations |
+
+The experiment demonstrates that:
+
+> **Infrastructure can be syntactically valid and scanner-compliant while still requiring architectural security reasoning.**
+
+The AI reviewer remained advisory throughout the process.
+
+No Terraform `apply` is performed by the agent or CI workflow.
+
+Infrastructure deployment authority remains outside the AI agent.
+
+---
+
+### Demo 2 Review Evidence
+
+#### 1. Initial deterministic IaC findings
+
+Terraform validation succeeded, while Trivy identified six HIGH-severity infrastructure findings.
+
+![Initial Trivy IaC security findings](docs/images/05-terraform-trivy-initial.png)
+
+#### 2. Initial contextual infrastructure assessment
+
+The AI infrastructure reviewer independently analyzed the change and identified the broader security and blast-radius implications.
+
+![Initial AI Terraform infrastructure risk assessment](docs/images/06-terraform-ai-initial-risk.png)
+
+#### 3. Final deterministic validation
+
+After progressive remediation, all 15 GitHub checks completed successfully, including Terraform validation and the HIGH/CRITICAL IaC security gate.
+
+![Final deterministic and agentic workflow checks](docs/images/07-terraform-final-checks.png)
+
+#### 4. Final contextual AI assessment
+
+Despite all deterministic checks passing, the AI reviewer retained a MEDIUM assessment for production-context concerns such as auditability, recovery strategy, lifecycle management, and least-privilege IAM/KMS design.
+
+![Final AI Terraform contextual risk assessment](docs/images/08-terraform-final-ai-review.png)
+
+> **Key result:** Passing deterministic security gates establishes a security baseline; it does not eliminate contextual architectural risk.
+
+---
+
 ## Security Model
 
 AI agents operating inside CI/CD environments introduce additional security considerations.
@@ -355,14 +615,30 @@ These approaches are complementary rather than interchangeable.
 
 ## Technology Stack
 
-- GitHub Actions
+### Agentic Engineering
+
 - GitHub Agentic Workflows (`gh-aw`)
 - GitHub Copilot
 - GPT-5.6 Terra
+
+### CI/CD & DevSecOps
+
+- GitHub Actions
+- GitHub Repository Rulesets
+- Dependabot
+- Trivy IaC Security Scanner
+
+### Infrastructure as Code
+
+- Terraform
+- AWS Provider
+- Amazon S3
+- AWS KMS
+
+### Application Validation
+
 - Python 3.13
 - Pytest
-- Dependabot
-- GitHub Repository Rulesets
 
 ---
 
@@ -372,15 +648,44 @@ These approaches are complementary rather than interchangeable.
 agentic-devsecops-pipeline/
 |
 |-- .github/
+|   |-- aw/
+|   |   |-- actions-lock.json
+|   |   `-- logs/
+|   |
+|   |-- skills/
+|   |   `-- agentic-workflows/
+|   |       `-- SKILL.md
+|   |
 |   |-- workflows/
 |   |   |-- ai-pr-reviewer.md
 |   |   |-- ai-pr-reviewer.lock.yml
-|   |   `-- ci.yml
+|   |   |-- ai-terraform-risk-reviewer.md
+|   |   |-- ai-terraform-risk-reviewer.lock.yml
+|   |   |-- ci.yml
+|   |   `-- terraform-ci.yml
 |   |
 |   `-- dependabot.yml
 |
+|-- docs/
+|   `-- images/
+|       |-- 01-ai-review-missing-tests.png
+|       |-- 02-ai-review-supply-chain.png
+|       |-- 03-ai-review-low-risk.png
+|       |-- 04-required-ci-checks.png
+|       |-- 05-terraform-trivy-initial.png
+|       |-- 06-terraform-ai-initial-risk.png
+|       |-- 07-terraform-final-checks.png
+|       `-- 08-terraform-final-ai-review.png
+|
 |-- src/
 |   `-- pricing.py
+|
+|-- terraform/
+|   `-- demo/
+|       |-- .terraform.lock.hcl
+|       |-- main.tf
+|       |-- outputs.tf
+|       `-- variables.tf
 |
 |-- tests/
 |   `-- test_pricing.py
@@ -401,15 +706,21 @@ Provides contextual AI-assisted review of application and CI/CD changes while pr
 
 ### Demo 2 — Terraform Infrastructure Risk Reviewer
 
-Status: **Planned**
+Status: **Completed**
 
-Planned analysis includes:
+Combines Terraform validation, deterministic IaC security scanning, severity-based policy gates, and contextual AI infrastructure review.
 
-- IAM privilege risks
-- network exposure
-- encryption configuration
-- destructive infrastructure changes
-- infrastructure security posture
+Demonstrated capabilities include:
+
+- infrastructure exposure analysis
+- encryption and KMS governance
+- TLS enforcement
+- data-protection analysis
+- infrastructure blast-radius reasoning
+- reliability and auditability assessment
+- cost and operational considerations
+- deterministic IaC security gates
+- human-controlled architecture decisions
 
 ### Demo 3 — CI Failure Investigator
 
@@ -448,7 +759,11 @@ This project follows several design principles:
 - [x] Protected main branch
 - [x] Immutable GitHub Action dependencies
 - [x] Dependabot for GitHub Actions
-- [ ] Terraform infrastructure risk reviewer
+- [x] Terraform infrastructure risk reviewer
+- [x] Terraform validation pipeline
+- [x] Trivy IaC security scanning
+- [x] Severity-based IaC policy gates
+- [x] S3/KMS security hardening
 - [ ] CI failure investigation agent
 - [ ] Agent evaluation and observability
 - [ ] Multi-model comparison
