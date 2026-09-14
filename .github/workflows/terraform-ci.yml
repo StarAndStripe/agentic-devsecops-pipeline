@@ -45,11 +45,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Trivy IaC Security Scan
+      - name: Trivy IaC report
         uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297
         with:
-          scan-type: "config"
-          scan-ref: "terraform/demo"
-          severity: "HIGH,CRITICAL"
-          exit-code: "1"
-          hide-progress: true
+          scan-type: config
+          scan-ref: terraform/demo
+          severity: MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
+
+      - name: Trivy IaC security gate
+        uses: aquasecurity/trivy-action@<PINNED_SHA>
+        with:
+          scan-type: config
+          scan-ref: terraform/demo
+          severity: HIGH,CRITICAL
+          exit-code: '1'
