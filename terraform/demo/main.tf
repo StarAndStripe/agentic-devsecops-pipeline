@@ -25,26 +25,24 @@ resource "aws_s3_bucket" "application_data" {
 resource "aws_s3_bucket_public_access_block" "application_data" {
   bucket = aws_s3_bucket.application_data.id
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
-}
-
-resource "aws_s3_bucket_acl" "application_data" {
-  depends_on = [
-    aws_s3_bucket_ownership_controls.application_data,
-    aws_s3_bucket_public_access_block.application_data
-  ]
-
-  bucket = aws_s3_bucket.application_data.id
-  acl    = "public-read"
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket_ownership_controls" "application_data" {
   bucket = aws_s3_bucket.application_data.id
 
   rule {
-    object_ownership = "BucketOwnerPreferred"
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "application_data" {
+  bucket = aws_s3_bucket.application_data.id
+
+  versioning_configuration {
+    status = "Enabled"
   }
 }
