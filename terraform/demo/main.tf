@@ -78,3 +78,32 @@ resource "aws_s3_bucket_policy" "application_data" {
   bucket = aws_s3_bucket.application_data.id
   policy = data.aws_iam_policy_document.application_data.json
 }
+
+resource "aws_kms_key" "application_data" {
+  description             = "KMS key for application data S3 bucket"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = {
+    Environment = var.environment
+    Project     = "agentic-devsecops-demo"
+  }
+}
+
+resource "aws_kms_alias" "application_data" {
+  name          = "alias/agentic-devsecops-application-data"
+  target_key_id = aws_kms_key.application_data.key_id
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "application_data" {
+  bucket = aws_s3_bucket.application_data.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.application_data.arn
+    }
+
+    bucket_key_enabled = true
+  }
+}
