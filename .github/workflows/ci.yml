@@ -27,4 +27,27 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Run tests
-        run: python -m pytest
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest 2>&1 | tee failed-ci.log
+
+      - name: Build bounded failure context
+        if: failure()
+        run: |
+          python scripts/collect_failure_context.py \
+            --workflow "CI" \
+            --job "Python Tests" \
+            --commit-sha "${{ github.sha }}" \
+            --changed-files "src/pricing.py" \
+            --log-file "failed-ci.log" \
+            --output "artifacts/failure-context.json"
+
+      - name: Upload failure context
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-failure-context
+          path: artifacts/failure-context.json
+          retention-days: 1
+          if-no-files-found: error

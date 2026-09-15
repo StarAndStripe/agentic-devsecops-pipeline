@@ -33,3 +33,6 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+failed-ci.log
+artifacts/
