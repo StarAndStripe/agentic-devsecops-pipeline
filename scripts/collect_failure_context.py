@@ -26,6 +26,52 @@ ANSI_ESCAPE_RE = re.compile(
     re.VERBOSE,
 )
 
+def load_changed_files(
+    changed_files: str | None = None,
+    changed_files_file: str | None = None,
+) -> list[str]:
+    """Return normalized changed-file paths from CLI input or a file."""
+
+    if changed_files_file:
+        path = Path(changed_files_file)
+
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Changed-files file does not exist: {changed_files_file}"
+            )
+
+        files = [
+            line.strip()
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+        return files
+
+    if changed_files:
+        return [
+            item.strip()
+            for item in changed_files.split(",")
+            if item.strip()
+        ]
+
+    return []
+
+def load_failure_log(log_file: str) -> str:
+    """Load a CI failure log or return a safe fallback when it is unavailable."""
+
+    path = Path(log_file)
+
+    if not path.exists():
+        return (
+            "CI failure log unavailable. "
+            "The expected log file was not produced."
+        )
+
+    return path.read_text(
+        encoding="utf-8",
+        errors="replace",
+    )
 
 def clean_log(log: str) -> str:
     """Normalize CI logs before they are provided to an AI investigator."""
@@ -150,21 +196,24 @@ def main() -> None:
     parser.add_argument("--job", required=True)
     parser.add_argument("--commit-sha", required=True)
     parser.add_argument("--changed-files", nargs="*", default=[])
+    parser.add_argument("--changed-files-file")
     parser.add_argument("--log-file", required=True)
     parser.add_argument("--output", required=True)
 
     args = parser.parse_args()
 
-    log = Path(args.log_file).read_text(
-        encoding="utf-8",
-        errors="replace",
+    log = load_failure_log(args.log_file)
+
+    changed_files = load_changed_files(
+        changed_files=",".join(args.changed_files) if args.changed_files else None,
+        changed_files_file=args.changed_files_file,
     )
 
     context = build_failure_context(
         workflow=args.workflow,
         job=args.job,
         commit_sha=args.commit_sha,
-        changed_files=args.changed_files,
+        changed_files=changed_files,
         failure_log=log,
     )
 
