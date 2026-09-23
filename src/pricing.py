@@ -13,7 +13,7 @@ def calculate_shipping_fee(order_total: float, express: bool = False) -> float:
     if order_total < 0:
         raise ValueError("Order total cannot be negative")
 
-    if order_total >= 150:
+    if order_total >= 100:
         return 0
 
     if express:
